@@ -34,6 +34,7 @@
 #include <graphene/chain/protocol/witness.hpp>
 #include <graphene/chain/protocol/worker.hpp>
 #include <graphene/chain/protocol/confidential.hpp>
+#include <graphene/chain/protocol/blog.hpp>
 
 namespace graphene { namespace chain {
 
@@ -86,7 +87,10 @@ namespace graphene { namespace chain {
             blind_transfer_operation,
             transfer_from_blind_operation,
             asset_settle_cancel_operation,  // VIRTUAL
-            asset_claim_fees_operation
+            asset_claim_fees_operation,
+            blog_post_create_operation,
+            blog_post_update_operation,
+            comment_create_operation
          > operation;
 
    /// @} // operations group

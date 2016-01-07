@@ -6,6 +6,8 @@ add_library( graphene_chain
              # As database takes the longest to compile, start it first
              database.cpp
              fork_database.cpp
+             blog_evaluator.cpp
+             protocol/blog.cpp
 
 #             db_balance.cpp
 #             db_block.cpp

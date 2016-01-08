@@ -2316,6 +2316,45 @@ public:
       return sign_transaction(tx, broadcast);
    }
 
+   signed_transaction create_blog_post( const blog_post& post, bool broadcast )
+   {
+      blog_post_create_operation op;
+      op.post = post;
+      
+      signed_transaction tx;
+      tx.operations.push_back( op );
+      set_operation_fees( tx, get_global_properties().parameters.current_fees );
+      tx.validate();
+      
+      return sign_transaction( tx, broadcast );
+   }
+
+   signed_transaction update_blog_post( const blog_post& post, bool broadcast )
+   {
+      blog_post_update_operation op;
+      op.post = post;
+      
+      signed_transaction tx;
+      tx.operations.push_back( op );
+      set_operation_fees( tx, get_global_properties().parameters.current_fees );
+      tx.validate();
+      
+      return sign_transaction( tx, broadcast );
+   }
+   
+   signed_transaction create_comment( const comment_data& comment, bool broadcast )
+   {
+      comment_create_operation op;
+      op.comment = comment;
+      
+      signed_transaction tx;
+      tx.operations.push_back( op );
+      set_operation_fees( tx, get_global_properties().parameters.current_fees );
+      tx.validate();
+      
+      return sign_transaction( tx, broadcast );
+   }
+
    void dbg_make_uia(string creator, string symbol)
    {
       asset_options opts;
@@ -3249,6 +3288,21 @@ signed_transaction wallet_api::approve_proposal(
    )
 {
    return my->approve_proposal( fee_paying_account, proposal_id, delta, broadcast );
+}
+
+signed_transaction wallet_api::create_blog_post( const blog_post& post, bool broadcast )
+{
+   return my->create_blog_post( post, broadcast );
+}
+
+signed_transaction wallet_api::update_blog_post( const blog_post& post, bool broadcast )
+{
+   return my->update_blog_post( post, broadcast );
+}
+
+signed_transaction wallet_api::create_comment( const comment_data& data, bool broadcast )
+{
+   return my->create_comment( post, broadcast );
 }
 
 global_property_object wallet_api::get_global_properties() const

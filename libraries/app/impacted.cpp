@@ -45,6 +45,7 @@ struct get_impacted_account_visitor
    void operator()( const blog_post_create_operation& op ){}
    void operator()( const blog_post_update_operation& op ){}
    void operator()( const comment_create_operation& op ){}
+   void operator()( const vote_operation& op ){}
 
    void operator()( const asset_claim_fees_operation& op ){}
    void operator()( const limit_order_create_operation& op ) {}

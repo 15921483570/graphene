@@ -65,6 +65,22 @@ namespace graphene { namespace chain {
       void            validate()const { comment.validate(); }
    };
 
+   struct vote_operation : public base_operation {
+      struct fee_parameters_type { 
+         uint64_t fee = GRAPHENE_BLOCKCHAIN_PRECISION; 
+      };
+
+      asset            fee;
+      account_id_type  voter;
+      string           tag;
+      object_id_type   voting_on;
+      object_id_type   weight_type;
+      int64_t          weight = 0;
+
+      account_id_type fee_payer()const { return voter; }
+      void            validate()const { }
+   };
+
 } } // namespae graphene::chain
 
 FC_REFLECT( graphene::chain::blog_post, (author)(permlink)(title)(tagline)(summary)(body)(tags)(meta_data) );
@@ -73,7 +89,10 @@ FC_REFLECT( graphene::chain::comment_data, (topic)(reply_to)(author)(body)(meta_
 FC_REFLECT( graphene::chain::blog_post_create_operation::fee_parameters_type, (fee)(price_per_kbyte) )
 FC_REFLECT( graphene::chain::blog_post_update_operation::fee_parameters_type, (fee)(price_per_kbyte) )
 FC_REFLECT( graphene::chain::comment_create_operation::fee_parameters_type, (fee)(price_per_kbyte) )
+FC_REFLECT( graphene::chain::vote_operation::fee_parameters_type, (fee) )
 
 FC_REFLECT( graphene::chain::blog_post_create_operation, (fee)(post) )
 FC_REFLECT( graphene::chain::blog_post_update_operation, (fee)(post_id)(post) )
 FC_REFLECT( graphene::chain::comment_create_operation, (fee)(comment) )
+FC_REFLECT( graphene::chain::vote_operation, (fee)(voter)(tag)(voting_on)(weight_type)(weight) )
+

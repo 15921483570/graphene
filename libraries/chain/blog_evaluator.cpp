@@ -54,5 +54,43 @@ object_id_type comment_create_evaluator::do_apply( const comment_create_operatio
    return new_comment.id;
 }
 
+void_result vote_evaluator::do_evaluate( const vote_operation& o ) {
+   FC_ASSERT( db().find_object( o.voting_on ) );
+   return void_result();
+}
+
+object_id_type vote_evaluator::do_apply( const vote_operation& o )
+{
+   auto& vote_idx = db().get_index_type<vote_index>().indices().get<by_voter_voting_on>();
+   auto itr = vote_idx.find( boost::make_tuple( o.voter, o.voting_on ) );
+   if( itr == vote_idx.end() ) {
+      FC_ASSERT( o.weight != 0, "new votes must have a non-zero weight" );
+      const auto& new_vote = db().create<vote_object>([&](vote_object& obj){
+          obj.voter = o.voter;
+          obj.tag   = o.tag;
+          obj.vote_time = db().head_block_time();
+          obj.last_decay_update = obj.vote_time;
+          obj.voting_on = o.voting_on;
+          obj.weight = o.weight;
+          obj.weight_type = o.weight_type;
+      });
+      return new_vote.id;
+   }
+   if( o.weight == 0 ) {
+      db().remove( *itr );
+      return object_id_type();
+   }
+
+   db().modify( *itr, [&]( vote_object& obj ) {
+       obj.voter = o.voter;
+       obj.tag   = o.tag;
+       obj.vote_time = db().head_block_time();
+       obj.last_decay_update = obj.vote_time;
+       obj.voting_on = o.voting_on;
+       obj.weight = o.weight;
+       obj.weight_type = o.weight_type;
+   });
+   return itr->id;
+}
 
 } } // namespace graphene::chain

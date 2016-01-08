@@ -3304,9 +3304,9 @@ signed_transaction wallet_api::update_blog_post( const blog_post& post, bool bro
    return my->update_blog_post( post, broadcast );
 }
 
-signed_transaction wallet_api::create_comment( const comment_data& data, bool broadcast )
+signed_transaction wallet_api::create_comment( const comment_data& comment, bool broadcast )
 {
-   return my->create_comment( post, broadcast );
+   return my->create_comment( comment, broadcast );
 }
 
 global_property_object wallet_api::get_global_properties() const

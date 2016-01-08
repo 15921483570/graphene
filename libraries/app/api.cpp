@@ -31,6 +31,7 @@
 #include <graphene/chain/get_config.hpp>
 #include <graphene/utilities/key_conversion.hpp>
 #include <graphene/chain/protocol/fee_schedule.hpp>
+#include <graphene/chain/blog_object.hpp>
 #include <graphene/chain/confidential_object.hpp>
 #include <graphene/chain/market_object.hpp>
 #include <graphene/chain/transaction_object.hpp>
@@ -292,7 +293,22 @@ namespace graphene { namespace app {
             } case balance_object_type:{
                /** these are free from any accounts */
                break;
-            }
+            } case blog_post_object_type:{
+               const auto& aobj = dynamic_cast<const blog_post_object*>(obj);
+               assert( aobj != nullptr );
+               result.push_back( aobj->post.author );
+               break;
+            } case comment_object_type:{
+               const auto& aobj = dynamic_cast<const comment_object*>(obj);
+               assert( aobj != nullptr );
+               result.push_back( aobj->comment.author );
+               break;
+            } /* case vote_object_type:{  -- this is commented out until we reflect vote_object in object_type enum in types.hpp
+               const auto& aobj = dynamic_cast<const vote_object*>(obj);
+               assert( aobj != nullptr );
+               result.push_back( aobj->voter );
+               break;
+            } */
           }
        }
        else if( obj->id.space() == implementation_ids )

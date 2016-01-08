@@ -16,6 +16,7 @@ class blog_post_object : public abstract_object<blog_post_object> {
 
       account_id_type author() const   { return post.author;   }
       string          permlink() const { return post.permlink; }
+      const string&   category() const { return post.category(); }
 
       fc::time_point_sec created;
       fc::time_point_sec last_update;
@@ -37,7 +38,7 @@ struct vote_object : public graphene::db::abstract_object<vote_object>
 {
     account_id_type  voter;
     object_id_type   weight_type; ///< may be an asset id, or some other unique identifier for the type of weight
-    string           tag;
+    string           category;
 
     time_point_sec   vote_time;
     time_point_sec   last_decay_update;
@@ -46,6 +47,61 @@ struct vote_object : public graphene::db::abstract_object<vote_object>
     int32_t          sequence = 0; ///< used in conjunction with voter to ensure a
                                    ///maximum number of outstanding vote objects can be created per account
 };
+
+struct vote_total_object : public graphene::db::abstract_object<vote_object>
+{
+   string           category;
+   int64_t          current_net_vote()const { return current_up - current_down; }
+
+   object_id_type   voted_on;
+   int64_t          current_up = 0;
+   int64_t          current_down = 0;
+   int64_t          high_net = 0;
+   time_point_sec   last_decay;
+};
+
+struct by_category_net_vote;
+struct by_category_high_net_vote;
+struct by_net_vote;
+struct by_high_net;
+
+typedef multi_index_container<
+   vote_total_object,
+   indexed_by<
+      ordered_unique< tag<by_id>, member< object, object_id_type, &object::id > >,
+      ordered_unique< tag<by_category_net_vote>,
+         composite_key< vote_total_object,
+            member< vote_total_object, string, &vote_total_object::category >,
+            const_mem_fun< vote_total_object, int64_t, &vote_total_object::current_net_vote>,
+            member< object, object_id_type, &object::id >
+         >,
+         composite_key_compare< std::less<string>, std::greater<int64_t>, std::less<object_id_type> >
+      >,
+      ordered_unique< tag<by_net_vote>,
+         composite_key< vote_total_object,
+            const_mem_fun< vote_total_object, int64_t, &vote_total_object::current_net_vote>,
+            member< object, object_id_type, &object::id >
+         >,
+         composite_key_compare<  std::greater<int64_t>, std::less<object_id_type> >
+      >,
+      ordered_unique< tag<by_net_vote>,
+         composite_key< vote_total_object,
+            member< vote_total_object, int64_t, &vote_total_object::high_net>,
+            member< object, object_id_type, &object::id >
+         >,
+         composite_key_compare<  std::greater<int64_t>, std::less<object_id_type> >
+      >,
+      ordered_unique< tag<by_category_high_net_vote>,
+         composite_key< vote_total_object,
+            member< vote_total_object, string, &vote_total_object::category >,
+            member< vote_total_object, int64_t, &vote_total_object::high_net >,
+            member< object, object_id_type, &object::id >
+         >,
+         composite_key_compare< std::less<string>, std::greater<int64_t>, std::less<object_id_type> >
+      >
+   >
+> vote_total_multi_index_type;
+
 
 /**
  *  This index needs to be effecient for the following operations:
@@ -67,7 +123,7 @@ typedef multi_index_container<
             member< vote_object, account_id_type, &vote_object::voter>,
             member< vote_object, int32_t, &vote_object::sequence>
          >
-      >,
+     >,
       ordered_unique< tag<by_voting_on>,
          composite_key< vote_object,
             member< vote_object, object_id_type, &vote_object::voting_on>,
@@ -86,6 +142,7 @@ typedef multi_index_container<
 struct by_author;
 struct by_author_tagline;
 struct by_author_date;
+struct by_category_date;
 struct by_date;
 typedef multi_index_container<
    blog_post_object,
@@ -98,12 +155,20 @@ typedef multi_index_container<
             const_mem_fun< blog_post_object, string, &blog_post_object::permlink>
          >
       >,
+      ordered_unique< tag<by_category_date>,
+         composite_key< blog_post_object,
+            const_mem_fun< blog_post_object, const string&, &blog_post_object::category>,
+            member< blog_post_object, time_point_sec, &blog_post_object::created>,
+            member< object, object_id_type, &object::id > 
+         >
+      >,
       ordered_unique< tag<by_author_date>,
          composite_key< blog_post_object,
             const_mem_fun< blog_post_object, account_id_type, &blog_post_object::author>,
-            member< blog_post_object, fc::time_point_sec, &blog_post_object::created>
+            member< blog_post_object, fc::time_point_sec, &blog_post_object::created>,
+            member< object, object_id_type, &object::id > 
          >,
-         composite_key_compare< std::less<account_id_type>, std::greater<fc::time_point_sec> >
+         composite_key_compare< std::less<account_id_type>, std::greater<fc::time_point_sec>, std::less<object_id_type> >
       >
    >
 > blog_post_multi_index_type;
@@ -143,10 +208,13 @@ FC_REFLECT_DERIVED( graphene::chain::comment_object, (graphene::db::object),
 FC_REFLECT_DERIVED( graphene::chain::vote_object, (graphene::db::object),
    (voter)
    (weight_type)
-   (tag)
+   (category)
    (vote_time)
    (last_decay_update)
    (voting_on)
    (weight)
    (sequence)
    )
+
+FC_REFLECT_DERIVED( graphene::chain::vote_total_object, (graphene::db::object),
+                    (category)(voted_on)(current_up)(current_down)(high_net)(last_decay) );

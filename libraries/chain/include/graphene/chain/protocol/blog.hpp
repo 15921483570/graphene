@@ -4,15 +4,17 @@
 namespace graphene { namespace chain {
 
    struct blog_post {
-      account_id_type  author;
-      string           permlink;
-      string           title;
-      string           tagline;
-      string           summary;
-      string           body; ///< limited by maximum transaction size.
-      vector<string>   tags; 
-      string           meta_data; ///< JSON Object containing extra, non-standard properties
+      blog_post_id_type response_to;
+      account_id_type   author;
+      string            permlink;
+      string            title;
+      string            tagline;
+      string            summary;
+      string            body; ///< limited by maximum transaction size.
+      vector<string>    tags; 
+      string            meta_data; ///< JSON Object containing extra, non-standard properties
 
+      const string& category()const { static string s; return tags.size() ? tags[0] : s; }
       void validate()const;
    };
 
@@ -72,7 +74,7 @@ namespace graphene { namespace chain {
 
       asset            fee;
       account_id_type  voter;
-      string           tag;
+      string           category;
       object_id_type   voting_on;
       object_id_type   weight_type;
       int64_t          weight = 0;
@@ -83,7 +85,7 @@ namespace graphene { namespace chain {
 
 } } // namespae graphene::chain
 
-FC_REFLECT( graphene::chain::blog_post, (author)(permlink)(title)(tagline)(summary)(body)(tags)(meta_data) );
+FC_REFLECT( graphene::chain::blog_post, (response_to)(author)(permlink)(title)(tagline)(summary)(body)(tags)(meta_data) );
 FC_REFLECT( graphene::chain::comment_data, (topic)(reply_to)(author)(body)(meta_data) );
 
 FC_REFLECT( graphene::chain::blog_post_create_operation::fee_parameters_type, (fee)(price_per_kbyte) )
@@ -94,5 +96,5 @@ FC_REFLECT( graphene::chain::vote_operation::fee_parameters_type, (fee) )
 FC_REFLECT( graphene::chain::blog_post_create_operation, (fee)(post) )
 FC_REFLECT( graphene::chain::blog_post_update_operation, (fee)(post_id)(post) )
 FC_REFLECT( graphene::chain::comment_create_operation, (fee)(comment) )
-FC_REFLECT( graphene::chain::vote_operation, (fee)(voter)(tag)(voting_on)(weight_type)(weight) )
+FC_REFLECT( graphene::chain::vote_operation, (fee)(voter)(category)(voting_on)(weight_type)(weight) )
 

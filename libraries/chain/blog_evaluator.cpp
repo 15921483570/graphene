@@ -69,7 +69,7 @@ object_id_type vote_evaluator::do_apply( const vote_operation& o )
       FC_ASSERT( o.weight != 0, "new votes must have a non-zero weight" );
       const auto& new_vote = db().create<vote_object>([&](vote_object& obj){
           obj.voter = o.voter;
-          obj.tag   = o.tag;
+          obj.category   = o.category;
           obj.vote_time = db().head_block_time();
           obj.last_decay_update = obj.vote_time;
           obj.voting_on = o.voting_on;
@@ -85,7 +85,7 @@ object_id_type vote_evaluator::do_apply( const vote_operation& o )
 
    db().modify( *itr, [&]( vote_object& obj ) {
        obj.voter = o.voter;
-       obj.tag   = o.tag;
+       obj.category   = o.category;
        obj.vote_time = db().head_block_time();
        obj.last_decay_update = obj.vote_time;
        obj.voting_on = o.voting_on;

@@ -36,6 +36,20 @@ namespace fc {
 
 namespace graphene { namespace chain {
 
+   /**
+    *  Committee Members get to set the relative budget for different categories of funding, each day
+    *  top N accounts in each category have their budget allocated proportional to their net votes.
+    */
+   struct payment_category {
+      uint16_t weight = 0; ///< the relative weight of this budget item
+      uint16_t positive_decay_rate = 0;///< the rate at which positive votes should decay 
+      uint16_t negative_decay_rate = 0; ///< the rate at which negative votes should decay 
+      uint64_t minimum_approval = 0; ///< ignore all payouts with less than minimum approval
+      uint32_t top_n = 0; ///< when considering payouts, only consider the top N by net approval
+      uint16_t percent_vesting; ///< the percent of payouts that should be vesting vs immediately available
+   };
+
+
    typedef static_variant<>  parameter_extension; 
    struct chain_parameters
    {
@@ -69,6 +83,8 @@ namespace graphene { namespace chain {
       uint16_t                accounts_per_fee_scale              = GRAPHENE_DEFAULT_ACCOUNTS_PER_FEE_SCALE; ///< number of accounts between fee scalings
       uint8_t                 account_fee_scale_bitshifts         = GRAPHENE_DEFAULT_ACCOUNT_FEE_SCALE_BITSHIFTS; ///< number of times to left bitshift account registration fee at each scaling
       uint8_t                 max_authority_depth                 = GRAPHENE_MAX_SIG_CHECK_DEPTH;
+      uint16_t                vesting_interest_rate               = GRAPHENE_100_PERCENT;
+      map<string,payment_category> budget_categories;
       extensions_type         extensions;
 
       /** defined in fee_schedule.cpp */
@@ -76,6 +92,7 @@ namespace graphene { namespace chain {
    };
 
 } }  // graphene::chain
+FC_REFLECT( graphene::chain::payment_category,  (weight)(positive_decay_rate)(negative_decay_rate)(minimum_approval)(top_n)(percent_vesting) )
 
 FC_REFLECT( graphene::chain::chain_parameters,
             (current_fees)
@@ -106,5 +123,7 @@ FC_REFLECT( graphene::chain::chain_parameters,
             (accounts_per_fee_scale)
             (account_fee_scale_bitshifts)
             (max_authority_depth)
+            (vesting_interest_rate)
+            (budget_categories)
             (extensions)
           )

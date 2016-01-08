@@ -1401,6 +1401,27 @@ class wallet_api
          const approval_delta& delta,
          bool broadcast /* = false */
          );
+         
+      /** Post a blog
+       *  
+       * @param post The blog post to post.
+       * @param broadcast true if you wish to broadcast the transaction.
+       */
+      signed_transaction create_blog_post( const blog_post& post, bool broadcast );
+      
+      /** Update a blog
+       * 
+       * @param post The updated blog post.
+       * @param broadcast true if you wish to broadcast the transcation.
+       */
+      signed_transaction update_blog_post( const blog_post& post, bool broadcast );
+      
+      /** Create a comment.
+       *
+       * @param comment The comment to post.
+       * @param broadcast true if you wish to broadcast the transaction.
+       */
+      signed_transaction create_comment( const comment_data& comment, bool broadcast );
 
       void dbg_make_uia(string creator, string symbol);
       void dbg_make_mia(string creator, string symbol);

@@ -1,7 +1,9 @@
 #include <graphene/chain/account_object.hpp>
+#include <graphene/chain/database.hpp>
 #include <graphene/chain/exceptions.hpp>
 #include <graphene/chain/hardfork.hpp>
 #include <graphene/chain/blog_evaluator.hpp>
+#include <graphene/chain/blog_object.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <graphene/chain/protocol/fee_schedule.hpp>

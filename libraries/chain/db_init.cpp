@@ -163,6 +163,7 @@ void database::initialize_evaluators()
    register_evaluator<blog_post_create_evaluator>();
    register_evaluator<blog_post_update_evaluator>();
    register_evaluator<comment_create_evaluator>();
+   register_evaluator<vote_evaluator>();
 }
 
 void database::initialize_indexes()
@@ -191,6 +192,10 @@ void database::initialize_indexes()
    add_index< primary_index<worker_index> >();
    add_index< primary_index<balance_index> >();
    add_index< primary_index<blinded_balance_index> >();
+
+   add_index< primary_index<blog_post_index> >();
+   add_index< primary_index<comment_index> >();
+   add_index< primary_index<vote_index> >();
 
    //Implementation object indexes
    add_index< primary_index<transaction_index                             > >();

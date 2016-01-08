@@ -90,7 +90,8 @@ namespace graphene { namespace chain {
             asset_claim_fees_operation,
             blog_post_create_operation,
             blog_post_update_operation,
-            comment_create_operation
+            comment_create_operation,
+            vote_operation
          > operation;
 
    /// @} // operations group

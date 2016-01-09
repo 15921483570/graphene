@@ -292,7 +292,6 @@ public:
             BlockUtil::DescryptSecretSlice ds(_id, ess._sender, Bytes(secret_msg.begin(), secret_msg.end()));
             decrypt_secrets.push_back(ds);
             
-            
             //
             _other_witness_secrets[ess._sender].push_back(Bytes(secret_msg.begin(), secret_msg.end()));
         }
@@ -333,20 +332,20 @@ public:
             }
         }
         
-//        for(auto ent: _other_witness_secrets)
-//        {
-//            int sec_owner = ent.first;
-//            vector<Bytes> secret_slice_list = ent.second;
-//            if(secret_slice_list.size() == 0) continue;
-//            
-//            cout << "\t\t\t owner is " << sec_owner <<endl;
-//            
-//            for (auto bytes : secret_slice_list)
-//            {
-//                printHexBytes(cout, bytes);
-//            }
-//            cout << endl;
-//        }
+        for(auto ent: _other_witness_secrets)
+        {
+            int sec_owner = ent.first;
+            vector<Bytes> secret_slice_list = ent.second;
+            if(secret_slice_list.size() == 0) continue;
+            
+            cout << "\t\t\t owner is " << sec_owner <<endl;
+            
+            for (auto bytes : secret_slice_list)
+            {
+                printHexBytes(cout, bytes);
+            }
+            cout << endl;
+        }
         
     }
     
@@ -381,6 +380,11 @@ public:
         return _priv_key.get_public_key();
     }
     
+    void reset_secret(int s)
+    {
+        _secret = s;
+    }
+    
 private:
     int _id,  _secret;
     fc::ecc::private_key _priv_key;
@@ -401,7 +405,15 @@ void init_witness()
         WitnessDemo* wt = new WitnessDemo(i, secret);
         global_witness_list.push_back(wt);
     }
-    
+}
+
+void reset_witness_secret()
+{
+    for (auto witness : global_witness_list)
+    {
+        int secret = rand();
+        witness->reset_secret(secret);
+    }
 }
 
 void witness_generate_blocks()
@@ -409,9 +421,10 @@ void witness_generate_blocks()
     vector<int> witness_schedule;
     for (int i=1; i<=WitnessDemoNum; ++i) witness_schedule.push_back(i);
   
-    for (int i = 1; i<=2; i++)
+    for (int i = 1; i<=2; i++) // rounds
     {
         std::random_shuffle(witness_schedule.begin(), witness_schedule.end());
+        reset_witness_secret();
         
         for(auto j:witness_schedule)
         {

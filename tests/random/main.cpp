@@ -47,6 +47,7 @@
 #include <string>
 #include <cryptopp/osrng.h>
 
+#include <cstdlib>
 
 using namespace graphene;
 using namespace CryptoPP;
@@ -152,10 +153,118 @@ void SecretRecoverFile(int threshold, const char *outFilename, char *const *inFi
 }
 
 
+namespace BlockUtil {
+    int generateBlockNum()
+    {
+        static int num = 0;
+        return ++num;
+    }
+    
+    
+    class SecretSliceDemo
+    {
+    public:
+        int _sender, _recver;
+        Bytes _slice;
+    };
+
+    
+    class BlockDemo
+    {
+    public:
+        BlockDemo(int n): _num(n){}
+        
+        int _num;
+    private:
+        
+        /*
+         1. Witness's  hash(_secret)
+         2. N pieces of the _secret ( encrypted by other Witness's public key)
+         3. Decrypted _secret slices (encrpted by my private key)
+         */
+        fc::sha256 _hash_secret;
+        vector<SecretSliceDemo> _encrypt_secret_list;
+        vector<SecretSliceDemo> _decrypt_secret_list;
+        
+    };
+    
+    vector<BlockDemo*> global_block_list;
+    
+    BlockDemo* generate_block(fc::ecc::private_key)
+    {
+        BlockDemo* blk = new BlockDemo(generateBlockNum());
+        
+        global_block_list.push_back(blk);
+        
+        return blk;
+    }
+    
+
+}
+
+#define WitnessDemoNum 10
+
+
+class WitnessDemo
+{
+public:
+    WitnessDemo(int id, int s): _id(id), _secret(s)
+    {
+        _priv_key = fc::ecc::private_key::regenerate(fc::sha256::hash(_id) );
+    };
+    
+    void creat_one_block()
+    {
+        // split _secret into N pieces
+        // publish hash(_secret)
+        // decrypt the secret slices of other Witness
+        
+        auto b = BlockUtil::generate_block(_priv_key);
+        
+        cout << _id << ": creat block " << b->_num << endl;
+    }
+    
+private:
+    int _id,  _secret;
+    fc::ecc::private_key _priv_key;
+    
+    //vector<Bytes> v;
+};
+
+vector<WitnessDemo*> global_witness_list;
+
+void init_witness()
+{
+    std::srand(std::time(NULL));
+    
+    for (int i=1; i<=WitnessDemoNum; i++) {
+        int secret = rand();
+        WitnessDemo* wt = new WitnessDemo(i, secret);
+        global_witness_list.push_back(wt);
+    }
+    
+}
+
+void witness_generate_blocks()
+{
+    for (int i = 1; i<=100; i++) {
+        int candidate = rand()%WitnessDemoNum;
+        
+        global_witness_list[candidate]->creat_one_block();
+    }
+}
 
 
 
-BOOST_AUTO_TEST_CASE( two_node_network )
+BOOST_AUTO_TEST_CASE( random_demo_test )
+{
+    init_witness();
+    
+    witness_generate_blocks();
+}
+
+//BOOST_AUTO_TEST_CASE( secret_share_demo )
+void secret_share_demo()
 {
    using namespace graphene::chain;
    using namespace graphene::app;
@@ -176,8 +285,6 @@ BOOST_AUTO_TEST_CASE( two_node_network )
        
        for(auto i=0; i<shares.size(); i++)
        {
-           //string str(shares[i].begin(), shares[i].end());
-           //cout << shares[ <<endl;
            for(auto ch: shares[i])
            {
                cout << hex << (int)ch;
@@ -193,22 +300,6 @@ BOOST_AUTO_TEST_CASE( two_node_network )
        {
            cout << ch;
        }
-    
-//       char thisSeed[1024];
-//       cout << "\nRandom Seed: ";
-//       ws(cin);
-//       cin.getline(thisSeed, 1024);
-//       SecretShareFile(2, 5, "/Users/clar/workspace/repo/graphene_xcode/test.txt", thisSeed);
-//
-//
-//        char * inFilenames[] =
-//       {
-//           "/Users/clar/workspace/repo/graphene_xcode/test.txt.002",
-//           "/Users/clar/workspace/repo/graphene_xcode/test.txt.003",
-//           "/Users/clar/workspace/repo/graphene_xcode/test.txt.001"
-//       };
-//       
-//       SecretRecoverFile(2, "/Users/clar/workspace/repo/graphene_xcode/test-rec.txt", inFilenames);
        
        
    } catch( fc::exception& e ) {

@@ -68,7 +68,7 @@ std::vector<Bytes> SecretShareBytes(const Bytes& secret, int threshold, int nSha
     std::string channel;
     for (int i = 0; i < nShares; i++)
     {
-        shares[i] = Bytes( 64);
+        shares[i] = Bytes( 12);
         arraySinks[i].reset( new CryptoPP::ArraySink((byte*)shares[i].data(), shares[i].size()) );
         
         channel = CryptoPP::WordToString<word32>(i);
@@ -169,6 +169,15 @@ namespace BlockUtil {
         int _sender, _recver;
         chain::memo_data _md;
     };
+    
+    class DescryptSecretSlice
+    {
+    public:
+        DescryptSecretSlice(int d, int o, Bytes s):_descrypter(d), _owner(o), _secret(s){}
+    public:
+        int _descrypter, _owner;
+        Bytes _secret;
+    };
 
     class BlockDemo
     {
@@ -186,7 +195,7 @@ namespace BlockUtil {
          */
         fc::sha256 _hash_secret;
         vector<EncryptSecretSlice>  _encrypt_secret_list;
-        vector<Bytes>               _descrypt_secret_list;
+        vector<DescryptSecretSlice> _descrypt_secret_list;
         
     };
     
@@ -196,7 +205,7 @@ namespace BlockUtil {
                               fc::ecc::private_key prv_key,
                               fc::sha256 hash_s,
                               vector<EncryptSecretSlice>& enc_ss,
-                              vector<Bytes> dec_sec)
+                              vector<DescryptSecretSlice> dec_sec)
     {
         BlockDemo* blk = new BlockDemo(generateBlockNum());
         blk->_hash_secret = hash_s;
@@ -271,16 +280,21 @@ public:
         }
         
         // 3.
-        vector<Bytes> decrypt_secrets;
+        vector<BlockUtil::DescryptSecretSlice> decrypt_secrets;
         for(auto ess: _ess_list)
         {
             assert(ess._recver == this->_id);
             
             chain::memo_data md = ess._md;
             
-            string secret_msg = md.get_message(_priv_key, global_witness_list[ess._sender]->get_public_key());
+            string secret_msg = md.get_message(_priv_key, global_witness_list[ess._sender-1]->get_public_key());
             
-            decrypt_secrets.push_back(Bytes(secret_msg.begin(), secret_msg.end()));
+            BlockUtil::DescryptSecretSlice ds(_id, ess._sender, Bytes(secret_msg.begin(), secret_msg.end()));
+            decrypt_secrets.push_back(ds);
+            
+            
+            //
+            _other_witness_secrets[ess._sender].push_back(Bytes(secret_msg.begin(), secret_msg.end()));
         }
         
         auto b = BlockUtil::generate_block(_priv_key, hash_my_secret, encryptSS_vec,  decrypt_secrets);
@@ -289,10 +303,60 @@ public:
         // dump details
         cout << "witness "<< _id << ": creat block " << b->_num << endl;
         cout << "\t\t my secrect is :";
-        for(auto b: secret_bytes) cout<<hex<<(short)b;
-        cout << endl;
+        printHexBytes(cout, secret_bytes);
         
+        cout << "\t\t my split secrets are: " <<endl;
+        for(auto bytes: split_secrets)
+        {
+            cout << "\t\t\t"; printHexBytes(cout, bytes);
+        }
+   
         
+        // recover the secret, if we got enough info here
+        for(int i=0; i<_other_witness_secrets.size(); i++)
+        {
+            vector<Bytes> secret_slice_list = _other_witness_secrets[i];
+            if(secret_slice_list.size()==WitnessSecretThreshold)
+            {
+                Bytes sec_rec = SecretRecoverBytes(secret_slice_list, WitnessSecretThreshold);
+                
+                cout << "\t\t"<<i+1<<"'s secret is recovered : "; printHexBytes(cout, sec_rec);
+                cout << endl;
+            }
+            
+            // secret is already recovered
+            if (secret_slice_list.size() > WitnessSecretThreshold)
+            {
+                _other_witness_secrets[i].empty();
+            }
+        }
+        
+    }
+    
+    void on_new_block()
+    {
+        auto blk = BlockUtil::global_block_list.back();
+        for (auto es: blk->_encrypt_secret_list)
+        {
+            if(es._recver == this->_id) //it is for me
+            {
+                _ess_list.push_back(es);
+            }
+        }
+        
+        for (auto ds: blk->_descrypt_secret_list)
+        {
+            _other_witness_secrets[ds._owner].push_back(ds._secret);
+        }
+    }
+    
+    void printHexBytes(std::ostream& x, Bytes bytes)
+    {
+        ios::fmtflags f(x.flags());
+        
+        for(auto b: bytes) x<<hex<<(short)b;
+        cout<<endl;
+        x.flags(f);
     }
     
     fc::ecc::public_key get_public_key()
@@ -305,6 +369,8 @@ private:
     fc::ecc::private_key _priv_key;
     
     vector<BlockUtil::EncryptSecretSlice> _ess_list;
+    
+    map<int, vector<Bytes>> _other_witness_secrets;
 };
 
 
@@ -323,10 +389,27 @@ void init_witness()
 
 void witness_generate_blocks()
 {
-    for (int i = 1; i<=30; i++) {
-        int candidate = rand()%WitnessDemoNum ;
+    vector<int> witness_schedule;
+    for (int i=1; i<=WitnessDemoNum; ++i) witness_schedule.push_back(i);
+  
+    for (int i = 1; i<=2; i++)
+    {
+        std::random_shuffle(witness_schedule.begin(), witness_schedule.end());
         
-        global_witness_list[candidate]->creat_one_block();
+        for(auto j:witness_schedule)
+        {
+            global_witness_list[j-1]->creat_one_block();
+            fc::usleep(fc::milliseconds(500));
+            
+            
+            for (auto k: witness_schedule)
+            {
+                if(k == j) continue;// skip self
+                global_witness_list[k-1]->on_new_block();
+            }
+        }
+   
+        
     }
 }
 

@@ -310,26 +310,43 @@ public:
         {
             cout << "\t\t\t"; printHexBytes(cout, bytes);
         }
-   
         
         // recover the secret, if we got enough info here
         for(auto ent: _other_witness_secrets)
         {
-            vector<Bytes> secret_slice_list = ent.second;
+            vector<Bytes>& secret_slice_list = ent.second;
             if(secret_slice_list.size()==WitnessSecretThreshold)
             {
                 Bytes sec_rec = SecretRecoverBytes(secret_slice_list, WitnessSecretThreshold);
                 
-                cout << "\t\t"<< ent.first<<"'s secret is recovered : "; printHexBytes(cout, sec_rec);
-                cout << endl;
+                cout << "\t\t"<< ent.first<<"'s secret is recovered : "; printHexBytes(cout, sec_rec); cout << endl;
+                //fc::usleep(fc::milliseconds(1000));
+                
+                _other_witness_secrets[ent.first].clear();
             }
             
             // secret is already recovered
             if (secret_slice_list.size() > WitnessSecretThreshold)
             {
-                _other_witness_secrets[ent.first].empty();
+                //secret_slice_list.clear();
+                _other_witness_secrets[ent.first].clear();
             }
         }
+        
+//        for(auto ent: _other_witness_secrets)
+//        {
+//            int sec_owner = ent.first;
+//            vector<Bytes> secret_slice_list = ent.second;
+//            if(secret_slice_list.size() == 0) continue;
+//            
+//            cout << "\t\t\t owner is " << sec_owner <<endl;
+//            
+//            for (auto bytes : secret_slice_list)
+//            {
+//                printHexBytes(cout, bytes);
+//            }
+//            cout << endl;
+//        }
         
     }
     

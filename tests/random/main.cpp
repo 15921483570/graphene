@@ -302,12 +302,13 @@ public:
             //
             _other_witness_secrets[ess._sender].push_back(Bytes(secret_msg.begin(), secret_msg.end()));
         }
+        _ess_list.clear();
         
         
         int sec_owner_to_store = -1;
         Bytes rec_secret;
         
-        // recover the secret, if we got enough info here
+        // try to recover the secret, if we got enough info here
         for(auto ent: _other_witness_secrets)
         {
             vector<Bytes>& secret_slice_list = ent.second;
@@ -315,7 +316,9 @@ public:
             {
                 Bytes sec_rec = SecretRecoverBytes(secret_slice_list, WitnessSecretThreshold);
                 
-                cout << "\t\t"<< ent.first<<"'s secret is recovered : "; printHexBytes(cout, sec_rec); cout << endl;
+                
+                
+                //cout << "\t\t"<< ent.first<<"'s secret is recovered : "; printHexBytes(cout, sec_rec); cout << endl;
                 //fc::usleep(fc::milliseconds(1000));
                 
                 _other_witness_secrets[ent.first].clear();
@@ -332,21 +335,7 @@ public:
             }
         }
         
-        for(auto ent: _other_witness_secrets)
-        {
-            int sec_owner = ent.first;
-            vector<Bytes> secret_slice_list = ent.second;
-            if(secret_slice_list.size() == 0) continue;
-            
-            cout << "\t\t\t owner is " << sec_owner <<endl;
-            
-            for (auto bytes : secret_slice_list)
-            {
-                printHexBytes(cout, bytes);
-            }
-            cout << endl;
-        }
-        
+
         
         // generate block
         auto b = BlockUtil::generate_block(_priv_key, hash_my_secret, encryptSS_vec,  decrypt_secrets, sec_owner_to_store, rec_secret);
@@ -361,6 +350,24 @@ public:
         {
             cout << "\t\t\t"; printHexBytes(cout, bytes);
         }
+        
+        if(sec_owner_to_store!= -1)
+            cout << "\t\t"<< sec_owner_to_store <<"'s secret is recovered : "; printHexBytes(cout, rec_secret); cout << endl;
+        
+        for(auto ent: _other_witness_secrets)
+        {
+            int sec_owner = ent.first;
+            vector<Bytes> secret_slice_list = ent.second;
+            if(secret_slice_list.size() == 0) continue;
+            
+            cout << "\t\t\t owner is " << sec_owner <<endl;
+            
+            for (auto bytes : secret_slice_list)
+            {
+                printHexBytes(cout, bytes);
+            }
+            cout << endl;
+        }  
         
     }
     
@@ -383,6 +390,14 @@ public:
         if(blk->_secret_owner != -1)
         {
             _other_witness_secrets[blk->_secret_owner].clear();
+            
+            for(auto itr =  _ess_list.begin(); itr!= _ess_list.end(); )
+            {
+                if(itr->_sender == blk->_secret_owner )
+                    itr = _ess_list.erase(itr);
+                else
+                    ++itr;
+            }
         }
     }
     
@@ -471,7 +486,7 @@ void witness_generate_blocks()
         for(auto j:witness_schedule)
         {
             global_witness_list[j-1]->creat_one_block();
-            fc::usleep(fc::milliseconds(500));
+            //fc::usleep(fc::milliseconds(500));
             
             
             for (auto k: witness_schedule)

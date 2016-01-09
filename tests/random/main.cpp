@@ -362,6 +362,8 @@ public:
             cout << "\t\t\t"; printHexBytes(cout, bytes);
         }
         
+        cout << "random:\t" << generate_random_number(b->_num - 4, b->_num - 1)._hash[2] << endl;
+        
     }
     
     void on_new_block()
@@ -416,6 +418,28 @@ public:
                 _other_witness_secrets[ent.first].clear();;
 
         }
+    }
+    
+    fc::ripemd160 generate_random_number(int from, int to)
+    {
+        if (from < 1)
+            from = 1;
+        
+        auto random = fc::ripemd160();
+        
+        for (int i = from; i <= to; i ++ ) {
+            fc::sha512::encoder enc;
+            
+            if (BlockUtil::global_block_list[i]->_secret_owner == -1)
+            {
+                return fc::ripemd160();
+            }
+            fc::raw::pack( enc, BlockUtil::global_block_list[i]->_recover_secret );
+            fc::raw::pack( enc, random );
+            random = fc::ripemd160::hash( enc.result() );
+        }
+        
+        return random;
     }
     
 private:

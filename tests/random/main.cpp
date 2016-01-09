@@ -197,6 +197,9 @@ namespace BlockUtil {
         vector<EncryptSecretSlice>  _encrypt_secret_list;
         vector<DescryptSecretSlice> _descrypt_secret_list;
         
+        Bytes _recover_secret;
+        int _secret_owner;
+        
     };
     
     vector<BlockDemo*> global_block_list;
@@ -205,12 +208,16 @@ namespace BlockUtil {
                               fc::ecc::private_key prv_key,
                               fc::sha256 hash_s,
                               vector<EncryptSecretSlice>& enc_ss,
-                              vector<DescryptSecretSlice> dec_sec)
+                              vector<DescryptSecretSlice> dec_sec,
+                              int sec_owner,
+                              Bytes secret)
     {
         BlockDemo* blk = new BlockDemo(generateBlockNum());
         blk->_hash_secret = hash_s;
         blk->_encrypt_secret_list = enc_ss;
         blk->_descrypt_secret_list = dec_sec;
+        blk->_secret_owner = sec_owner;
+        blk->_recover_secret = secret;
         
         global_block_list.push_back(blk);
         
@@ -296,19 +303,9 @@ public:
             _other_witness_secrets[ess._sender].push_back(Bytes(secret_msg.begin(), secret_msg.end()));
         }
         
-        auto b = BlockUtil::generate_block(_priv_key, hash_my_secret, encryptSS_vec,  decrypt_secrets);
         
-        
-        // dump details
-        cout << "witness "<< _id << ": creat block " << b->_num << endl;
-        cout << "\t\t my secrect is :";
-        printHexBytes(cout, secret_bytes);
-        
-        cout << "\t\t my split secrets are: " <<endl;
-        for(auto bytes: split_secrets)
-        {
-            cout << "\t\t\t"; printHexBytes(cout, bytes);
-        }
+        int sec_owner_to_store = -1;
+        Bytes rec_secret;
         
         // recover the secret, if we got enough info here
         for(auto ent: _other_witness_secrets)
@@ -322,6 +319,9 @@ public:
                 //fc::usleep(fc::milliseconds(1000));
                 
                 _other_witness_secrets[ent.first].clear();
+                
+                sec_owner_to_store = ent.first;
+                rec_secret = sec_rec;
             }
             
             // secret is already recovered
@@ -347,6 +347,21 @@ public:
             cout << endl;
         }
         
+        
+        // generate block
+        auto b = BlockUtil::generate_block(_priv_key, hash_my_secret, encryptSS_vec,  decrypt_secrets, sec_owner_to_store, rec_secret);
+        
+        // dump details
+        cout << "witness "<< _id << ": creat block " << b->_num << endl;
+        cout << "\t\t my secrect is :";
+        printHexBytes(cout, secret_bytes);
+        
+        cout << "\t\t my split secrets are: " <<endl;
+        for(auto bytes: split_secrets)
+        {
+            cout << "\t\t\t"; printHexBytes(cout, bytes);
+        }
+        
     }
     
     void on_new_block()
@@ -363,6 +378,11 @@ public:
         for (auto ds: blk->_descrypt_secret_list)
         {
             _other_witness_secrets[ds._owner].push_back(ds._secret);
+        }
+        
+        if(blk->_secret_owner != -1)
+        {
+            _other_witness_secrets[blk->_secret_owner].clear();
         }
     }
     
@@ -383,6 +403,19 @@ public:
     void reset_secret(int s)
     {
         _secret = s;
+    }
+    
+    void reset_other_witness_secrets()
+    {
+        for(auto ent: _other_witness_secrets)
+        {
+            //int sec_owner = ent.first;
+            
+            vector<Bytes> secret_slice_list = ent.second;
+            if(secret_slice_list.size() >=  WitnessSecretThreshold)
+                _other_witness_secrets[ent.first].clear();;
+
+        }
     }
     
 private:
@@ -416,6 +449,14 @@ void reset_witness_secret()
     }
 }
 
+void reset_witness_cached_secrets()
+{
+    for (auto witness : global_witness_list)
+    {
+        witness->reset_other_witness_secrets();
+    }
+}
+
 void witness_generate_blocks()
 {
     vector<int> witness_schedule;
@@ -423,8 +464,9 @@ void witness_generate_blocks()
   
     for (int i = 1; i<=2; i++) // rounds
     {
-        std::random_shuffle(witness_schedule.begin(), witness_schedule.end());
+        //std::random_shuffle(witness_schedule.begin(), witness_schedule.end());
         reset_witness_secret();
+        reset_witness_cached_secrets();
         
         for(auto j:witness_schedule)
         {

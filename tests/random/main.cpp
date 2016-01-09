@@ -313,21 +313,21 @@ public:
    
         
         // recover the secret, if we got enough info here
-        for(int i=0; i<_other_witness_secrets.size(); i++)
+        for(auto ent: _other_witness_secrets)
         {
-            vector<Bytes> secret_slice_list = _other_witness_secrets[i];
+            vector<Bytes> secret_slice_list = ent.second;
             if(secret_slice_list.size()==WitnessSecretThreshold)
             {
                 Bytes sec_rec = SecretRecoverBytes(secret_slice_list, WitnessSecretThreshold);
                 
-                cout << "\t\t"<<i+1<<"'s secret is recovered : "; printHexBytes(cout, sec_rec);
+                cout << "\t\t"<< ent.first<<"'s secret is recovered : "; printHexBytes(cout, sec_rec);
                 cout << endl;
             }
             
             // secret is already recovered
             if (secret_slice_list.size() > WitnessSecretThreshold)
             {
-                _other_witness_secrets[i].empty();
+                _other_witness_secrets[ent.first].empty();
             }
         }
         

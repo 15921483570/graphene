@@ -227,8 +227,8 @@ namespace BlockUtil {
 
 }
 
-#define WitnessDemoNum 10
-#define WitnessSecretThreshold 2
+#define WitnessDemoNum 30
+#define WitnessSecretThreshold 3
 
 class WitnessDemo;
 vector<WitnessDemo*> global_witness_list;
@@ -355,11 +355,14 @@ public:
         cout << "\t\t my secrect is :";
         printHexBytes(cout, secret_bytes);
         
-        cout << "\t\t my split secret slices are: " <<endl;
+        cout << "\t\t my split secret slices are: " ;
+        int cc=1;
         for(auto bytes: split_secrets)
         {
-            cout << "\t\t\t"; printHexBytes(cout, bytes);
+            if(cc%5==1) cout<<"\n\t\t\t";
+            printHexBytesNoNewline(cout, bytes); cout<<" "; cc++;
         }
+        cout<<endl;
         
 
         for(auto str: descrypt_detail_strings)
@@ -369,7 +372,7 @@ public:
             cout << "\n\t\t witness "<< sec_owner_to_store <<"'s secret is recovered from ("<<rec_detail_string<<"): ";
         printHexBytes(cout, rec_secret);
 
-        cout << "\t\t publish random number:\t" << generate_random_number(b->_num - 4, b->_num - 1)._hash[2] << endl;
+        cout << "\t\t publish random number:\t" << generate_random_number(b->_num - 4, b->_num - 1)._hash[2];
 
         
     }
@@ -477,7 +480,7 @@ void init_witness()
 {
     std::srand(std::time(NULL));
     
-    for (int i=1; i<=10; i++) {
+    for (int i=1; i<=WitnessDemoNum; i++) {
         int secret = rand();
         WitnessDemo* wt = new WitnessDemo(i, secret);
         global_witness_list.push_back(wt);
@@ -509,14 +512,17 @@ void witness_generate_blocks()
     for (int i = 1; i<=2; i++) // rounds
     {
         cout << "\n Start Round "<<i<<endl;
-        std::random_shuffle(witness_schedule.begin(), witness_schedule.end());
+        std::random_shuffle(witness_schedule.begin(), witness_schedule.end(), [](int n) { return rand() % n; });
+        
+        for(auto j: witness_schedule) cout << j<<", "; cout<<endl;
+        
         reset_witness_secret();
         reset_witness_cached_secrets();
         
         for(auto j:witness_schedule)
         {
             global_witness_list[j-1]->creat_one_block();
-            fc::usleep(fc::milliseconds(500));
+            //fc::usleep(fc::milliseconds(500));
             
             
             for (auto k: witness_schedule)

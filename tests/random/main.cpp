@@ -369,7 +369,7 @@ public:
             cout << "\n\t\t witness "<< sec_owner_to_store <<"'s secret is recovered from ("<<rec_detail_string<<"): ";
         printHexBytes(cout, rec_secret);
 
-        cout << "random:\t" << generate_random_number(b->_num - 4, b->_num - 1)._hash[2] << endl;
+        cout << "\t\t publish random number:\t" << generate_random_number(b->_num - 4, b->_num - 1)._hash[2] << endl;
 
         
     }
@@ -508,6 +508,7 @@ void witness_generate_blocks()
   
     for (int i = 1; i<=2; i++) // rounds
     {
+        cout << "\n Start Round "<<i<<endl;
         std::random_shuffle(witness_schedule.begin(), witness_schedule.end());
         reset_witness_secret();
         reset_witness_cached_secrets();
@@ -515,7 +516,7 @@ void witness_generate_blocks()
         for(auto j:witness_schedule)
         {
             global_witness_list[j-1]->creat_one_block();
-            //fc::usleep(fc::milliseconds(500));
+            fc::usleep(fc::milliseconds(500));
             
             
             for (auto k: witness_schedule)
@@ -524,7 +525,6 @@ void witness_generate_blocks()
                 global_witness_list[k-1]->on_new_block();
             }
         }
-   
         
     }
 }

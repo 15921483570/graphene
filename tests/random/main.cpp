@@ -18,6 +18,7 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  */
+#include <graphene/chain/protocol/memo.hpp>
 #include <graphene/app/application.hpp>
 #include <graphene/app/plugin.hpp>
 
@@ -160,22 +161,23 @@ namespace BlockUtil {
         return ++num;
     }
     
-    
-    class SecretSliceDemo
+    class EncryptSecretSlice
     {
     public:
+        EncryptSecretSlice(int s, int r, chain::memo_data d):_sender(s), _recver(r), _md(d){}
+    public:
         int _sender, _recver;
-        Bytes _slice;
+        chain::memo_data _md;
     };
 
-    
     class BlockDemo
     {
     public:
         BlockDemo(int n): _num(n){}
         
         int _num;
-    private:
+    
+    public:
         
         /*
          1. Witness's  hash(_secret)
@@ -183,16 +185,23 @@ namespace BlockUtil {
          3. Decrypted _secret slices (encrpted by my private key)
          */
         fc::sha256 _hash_secret;
-        vector<SecretSliceDemo> _encrypt_secret_list;
-        vector<SecretSliceDemo> _decrypt_secret_list;
+        vector<EncryptSecretSlice>  _encrypt_secret_list;
+        vector<Bytes>               _descrypt_secret_list;
         
     };
     
     vector<BlockDemo*> global_block_list;
     
-    BlockDemo* generate_block(fc::ecc::private_key)
+    BlockDemo* generate_block(
+                              fc::ecc::private_key prv_key,
+                              fc::sha256 hash_s,
+                              vector<EncryptSecretSlice>& enc_ss,
+                              vector<Bytes> dec_sec)
     {
         BlockDemo* blk = new BlockDemo(generateBlockNum());
+        blk->_hash_secret = hash_s;
+        blk->_encrypt_secret_list = enc_ss;
+        blk->_descrypt_secret_list = dec_sec;
         
         global_block_list.push_back(blk);
         
@@ -203,7 +212,10 @@ namespace BlockUtil {
 }
 
 #define WitnessDemoNum 10
+#define WitnessSecretThreshold 2
 
+class WitnessDemo;
+vector<WitnessDemo*> global_witness_list;
 
 class WitnessDemo
 {
@@ -215,29 +227,93 @@ public:
     
     void creat_one_block()
     {
-        // split _secret into N pieces
-        // publish hash(_secret)
-        // decrypt the secret slices of other Witness
+        // Missions here:
+        // 1. split _secret into N pieces
+        // 2. publish hash(_secret)
+        // 3. decrypt the secret slices from other Witness
         
-        auto b = BlockUtil::generate_block(_priv_key);
+        // 1.
+        fc::sha256 hash_my_secret = fc::sha256::hash(_secret);
         
-        cout << _id << ": creat block " << b->_num << endl;
+        // 2.
+        Bytes secret_bytes;
+        for (int i = 3; i >= 0; i--)
+        {
+            byte b = (_secret >> 8 * i) & 0xFF;
+            secret_bytes.push_back(b);
+        }
+        
+        vector<Bytes> split_secrets = SecretShareBytes(secret_bytes, WitnessSecretThreshold, WitnessDemoNum);
+        
+        vector<BlockUtil::EncryptSecretSlice> encryptSS_vec;
+        
+        for (int i=1; i<=WitnessDemoNum; i++) {
+            if(i == _id) continue;
+            
+            WitnessDemo* wt = global_witness_list[i-1];
+            
+            chain::memo_data m;
+            
+            auto receiver_pub_key = wt->get_public_key();
+            auto sender_prv_key = _priv_key;
+            auto sender_pub_key = _priv_key.get_public_key();
+            
+            string secret_msg(split_secrets[i-1].begin(), split_secrets[i-1].end());
+        
+            // encrypt the split secret
+            m.from = sender_pub_key;
+            m.to = receiver_pub_key;
+            m.set_message(sender_prv_key, receiver_pub_key, secret_msg);
+            
+            BlockUtil::EncryptSecretSlice ess(this->_id, i, m);
+            
+            encryptSS_vec.push_back(ess);
+        }
+        
+        // 3.
+        vector<Bytes> decrypt_secrets;
+        for(auto ess: _ess_list)
+        {
+            assert(ess._recver == this->_id);
+            
+            chain::memo_data md = ess._md;
+            
+            string secret_msg = md.get_message(_priv_key, global_witness_list[ess._sender]->get_public_key());
+            
+            decrypt_secrets.push_back(Bytes(secret_msg.begin(), secret_msg.end()));
+        }
+        
+        auto b = BlockUtil::generate_block(_priv_key, hash_my_secret, encryptSS_vec,  decrypt_secrets);
+        
+        
+        // dump details
+        cout << "witness "<< _id << ": creat block " << b->_num << endl;
+        cout << "\t\t my secrect is :";
+        for(auto b: secret_bytes) cout<<hex<<(short)b;
+        cout << endl;
+        
+        
+    }
+    
+    fc::ecc::public_key get_public_key()
+    {
+        return _priv_key.get_public_key();
     }
     
 private:
     int _id,  _secret;
     fc::ecc::private_key _priv_key;
     
-    //vector<Bytes> v;
+    vector<BlockUtil::EncryptSecretSlice> _ess_list;
 };
 
-vector<WitnessDemo*> global_witness_list;
+
 
 void init_witness()
 {
     std::srand(std::time(NULL));
     
-    for (int i=1; i<=WitnessDemoNum; i++) {
+    for (int i=1; i<=10; i++) {
         int secret = rand();
         WitnessDemo* wt = new WitnessDemo(i, secret);
         global_witness_list.push_back(wt);
@@ -247,8 +323,8 @@ void init_witness()
 
 void witness_generate_blocks()
 {
-    for (int i = 1; i<=100; i++) {
-        int candidate = rand()%WitnessDemoNum;
+    for (int i = 1; i<=30; i++) {
+        int candidate = rand()%WitnessDemoNum ;
         
         global_witness_list[candidate]->creat_one_block();
     }
